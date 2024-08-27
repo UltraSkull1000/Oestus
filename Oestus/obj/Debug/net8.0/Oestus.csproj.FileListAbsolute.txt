@@ -1,0 +1,15 @@
+C:\Users\HP\Documents\Oestus\obj\Debug\net8.0\Oestus.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\HP\Documents\Oestus\obj\Debug\net8.0\Oestus.AssemblyInfoInputs.cache
+C:\Users\HP\Documents\Oestus\obj\Debug\net8.0\Oestus.AssemblyInfo.cs
+C:\Users\HP\Documents\Oestus\obj\Debug\net8.0\Oestus.csproj.CoreCompileInputs.cache
+C:\Users\HP\Documents\Oestus\Oestus\bin\Debug\net8.0\Oestus.deps.json
+C:\Users\HP\Documents\Oestus\Oestus\bin\Debug\net8.0\Oestus.dll
+C:\Users\HP\Documents\Oestus\Oestus\bin\Debug\net8.0\Oestus.pdb
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\Oestus.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\Oestus.AssemblyInfoInputs.cache
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\Oestus.AssemblyInfo.cs
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\Oestus.csproj.CoreCompileInputs.cache
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\Oestus.dll
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\refint\Oestus.dll
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\Oestus.pdb
+C:\Users\HP\Documents\Oestus\Oestus\obj\Debug\net8.0\ref\Oestus.dll

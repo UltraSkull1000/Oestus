@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oestus", "Oestus\Oestus.csproj", "{AD83344F-8B56-4536-87E8-6F4BBC18E876}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Oestus.Tests", "Oestus.Tests\Oestus.Tests.csproj", "{30FA0C9E-4484-42DA-84AA-6EB287F171DD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AD83344F-8B56-4536-87E8-6F4BBC18E876}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AD83344F-8B56-4536-87E8-6F4BBC18E876}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AD83344F-8B56-4536-87E8-6F4BBC18E876}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AD83344F-8B56-4536-87E8-6F4BBC18E876}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30FA0C9E-4484-42DA-84AA-6EB287F171DD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30FA0C9E-4484-42DA-84AA-6EB287F171DD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30FA0C9E-4484-42DA-84AA-6EB287F171DD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30FA0C9E-4484-42DA-84AA-6EB287F171DD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D7026511-3598-46A6-9E77-A7214CECD1AD}
+	EndGlobalSection
+EndGlobal
