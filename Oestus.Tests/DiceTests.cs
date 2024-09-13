@@ -59,7 +59,7 @@ public class DiceTests
     [Fact]
     public void Dice_ParseSimple(){
         Console.SetOut(new ConsoleWriter(output));
-        int x = Dice.Parse("1d20", out var y);
+        int x = Dice.Parse("d20", out var y);
         output.WriteLine($"Dice Parser Output: {x} | {y}");
         Assert.InRange(x, 1, 200);
     }
@@ -150,5 +150,23 @@ public class DiceTests
         int x = Dice.Parse("1d20+2d10+8dF+16-1d8+14df+100d3", out var y);
         output.WriteLine($"Dice Parser Output: {x} | {y}");
         Assert.InRange(x, 89, 377);
+    }
+
+    [Fact]
+    public void Dice_DropLowest()
+    {
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("4d6dl1", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 3, 18);
+    }
+
+        [Fact]
+    public void Dice_DropHighest()
+    {
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("4d6dh1", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 3, 18);
     }
 }

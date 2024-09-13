@@ -1,5 +1,3 @@
-using System.Diagnostics;
-
 namespace Oestus
 {
     public static class Dice
@@ -15,26 +13,28 @@ namespace Oestus
 
             Stack<int> digitStack = new Stack<int>(); //used to stack digits while reading to next instruction.
 
-            int count = 1, faces = 1, multiplier = 1, total = 0; // count is the number of dice. faces is the number of faces on the die. multiplier determines whether the number is negative. total is the current total of the given results.
+            int count = 0, faces = 0, multiplier = 1, total = 0; // count is the number of dice. faces is the number of faces on the die. multiplier determines whether the number is negative. total is the current total of the given results.
             bool die = false; //whether we are definitively rolling a die or not.
 
             for (int i = 0; i < query.Length; i++) //for each character in the query. TODO: Possibly Parallelize by splitting across mathematical symbols.
             {
-                bool EOQ = i == query.Length - 1; //Whether we are at the end of the query or not
+                bool EOQ = i >= query.Length - 1; //Whether we are at the end of the query or not
+                char current = query[i];
+                char next = EOQ ? '#' : query[i + 1];
 
-                if (!isValidCharacter(query[i])) //validate whether the current character in the stream is valid in terms of dice. 
-                    throw new ArgumentException("Invalid Character in Parsing Stream: " + query[i]);
+                if (!isValidCharacter(current)) //validate whether the current character in the stream is valid in terms of dice. 
+                    throw new ArgumentException("Invalid Character in Parsing Stream: " + current);
 
-                if (char.IsNumber(query[i])) //If the character is a number, push it on to the digit stack. 
+                if (char.IsNumber(current)) //If the character is a number, push it on to the digit stack. 
                 {
-                    digitStack.Push(query[i] - '0');
+                    digitStack.Push(current - '0');
                     if (!EOQ)
                         continue;
                 }
 
                 if (!die)
                 {
-                    if (query[i] == 'd' && !die) //roll over into die mode
+                    if (current == 'd' && !die) //roll over into die mode
                     {
                         if (digitStack.Count() == 0) //there was no number preceding d, so treat it as if you are rolling only one die.
                             count = 1;
@@ -46,7 +46,7 @@ namespace Oestus
                         continue;
                     }
 
-                    if (query[i] == '+' || query[i] == '-') //we're adding to an integer.
+                    if (current == '+' || current == '-') //we're adding to an integer.
                     {
                         faces = digitStack.decompressStack(); //get that integer
 
@@ -56,7 +56,7 @@ namespace Oestus
                             resultString += faces;
                         }
 
-                        if (query[i] == '-') // if we're subtracting, the multiplier needs to be -1.
+                        if (current == '-') // if we're subtracting, the multiplier needs to be -1.
                             multiplier = -1;
                         else //otherwise, reset.
                             multiplier = 1;
@@ -73,14 +73,14 @@ namespace Oestus
                 }
                 if (die) //die mode
                 {
-                    if (query[i] == '+' || query[i] == '-' || EOQ && (query[i] != 'a') && (query[i] != 's') && (query[i] != 'f')) //Roll a normal numerical die!
+                    if (current == '+' || current == '-' || EOQ && (current != 'a') && (current != 's') && (current != 'f')) //Roll a normal numerical die!
                     {
                         if (digitStack.Count() == 0)
                             throw new ArgumentException("Query format is invalid.");
-                        faces = digitStack.decompressStack(); 
-                        total += multiplier * ProcessDice(count, faces, out var dres); //helper function to process dice into dice rolls.
+                        faces = digitStack.decompressStack();
+                        total += multiplier * ProcessDice(faces, count, out var dres); //helper function to process dice into dice rolls.
                         resultString += $"({count}d{faces} = {dres})"; //add this roll and its results to the result string
-                        if (query[i] == '-') //subtraction
+                        if (current == '-') //subtraction
                             multiplier = -1;
                         else //addition
                             multiplier = 1;
@@ -89,103 +89,161 @@ namespace Oestus
                     }
 
 
-                    if (query[i] == 'd') //okay, we have a nested die here.
+                    if (current == 'd')
                     {
                         if (digitStack.Count() == 0) //oh nevermind, we've double stacked d's
                             throw new ArgumentException("Query format is invalid (too many symbols in a row)");
                         faces = digitStack.decompressStack();
-                        count = ProcessDice(count, faces, out var _); //instead of pushing the result to the total, we roll the die and have a new count.
-                        faces = 0; //reset faces.
-                        continue;
+                        if (next == 'l' || next == 'h')
+                        { //we are dropping the lowest or highest
+                            i += 2;
+                            int j = i;
+                            for (j = i; j < query.Length; j++)
+                            {
+                                if (!char.IsNumber(query[j]))
+                                    break;
+                                digitStack.Push(query[j] - '0');
+                            }
+                            i = j;
+                            int drop = digitStack.decompressStack();
+                            if (next == 'l') //dropping lowest
+                            {
+                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropLowest, drop);
+                                resultString += $"{count}d{faces}dl{drop} = {dres}";
+                                die = false;
+                                count = 0;
+                                faces = 0;
+                            }
+                            else
+                            { //dropping highest
+                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropHighest, drop);
+                                resultString += $"{count}d{faces}dh{drop} = {dres}";
+                                die = false;
+                                count = 0;
+                                faces = 0;
+                            }
+                            continue;
+                        }
+
+                        else //okay, we have a nested die here.
+                        {
+                            count = ProcessDice(faces, count, out var _); //instead of pushing the result to the total, we roll the die and have a new count.
+                            faces = 0; //reset faces.
+                            continue;
+                        }
                     }
 
-                    if (query[i] == 'f') //we're rolling fudge dice!
+                    if (current == 'f') //we're rolling fudge dice!
                     {
-                        total += multiplier * RollFudgeDice(count, out var list);
-                        resultString += $"({count}dF = {list.Sum()} {list.ToDiceString()})";
+                        total += multiplier * ProcessDice(0, count, out var dres, ProcessType.Fudge);
+                        resultString += $"{count}dF = {dres}";
                         die = false;
                         count = 0;
                         faces = 0;
                     }
 
-                    if (query[i] == 'a' || query[i] == 's') //we are rolling with advantage or disadvantage
+                    if (current == 'a' || current == 's') //we are rolling with advantage or disadvantage
                     {
                         if (digitStack.Count() == 0)
                             throw new ArgumentException("Query format is invalid.");
                         faces = digitStack.decompressStack();
                         var dres = "";
-                        if(query[i] == 'a') //advantage
-                            total += ProcessDiceAdv(count, faces, out dres);
+                        if (current == 'a') //advantage
+                            total += ProcessDice(faces, count, out dres, ProcessType.Advantage);
                         else //disadvantage
-                            total += ProcessDiceDis(count, faces, out dres);
-                        resultString += $"{count}d{faces}{query[i]} = {dres}";
+                            total += ProcessDice(faces, count, out dres, ProcessType.Disadvantage);
+                        resultString += $"{count}d{faces}{current} = {dres}";
                         die = false;
                         count = 0;
                     }
                 }
 
-                if (query[i] == '+' || query[i] == '-') //print symbols to resultant string.
+                if (current == '+' || current == '-') //print symbols to resultant string.
                 {
-                    resultString += $" {query[i]} ";
+                    resultString += $" {current} ";
                 }
             }
             return total;
         }
 
-        // TODO: compress processdice functions
-        private static int ProcessDice(int c, int f, out string res)
+        enum ProcessType
         {
-            if (f == 0)
-                throw new ArgumentOutOfRangeException("Number of Faces on a Die cannot be 0.");
-            res = "";
-            if (c == 1)
-            {
-                var result = RollDice(f);
-                res += $"{result}";
-                return result;
-            }
-            else
-            {
-                var result = RollDice(f, c, out var list);
-                res += $"{result} {list.ToDiceString()}";
-                return result;
-            }
+            Default,
+            Advantage,
+            Disadvantage,
+            DropLowest,
+            DropHighest,
+            Fudge
         }
-        private static int ProcessDiceAdv(int c, int f, out string res)
+        private static int ProcessDice(int faces, int count, out string resultString, ProcessType type = ProcessType.Default, int drop = 0)
         {
-            if (f == 0)
-                throw new ArgumentOutOfRangeException("Number of Faces on a Die cannot be 0.");
-            res = "";
-            if (c == 1)
+            if (count <= 0) //there are no dice to roll!
+                throw new ArgumentOutOfRangeException("Number of Dice cannot be less than or equal to 0.");
+            if (faces <= 0 && type != ProcessType.Fudge) //cannot have a number of faces that can't exist in 3 dimensions. Fudge defaults to 3 sides. 
+                throw new ArgumentOutOfRangeException("Number of Faces cannot be less than or equal to 0.");
+
+            resultString = ""; //init result string
+            int result = 0;
+            if (count == 1)
             {
-                var result = RollDiceAdv(f, out var x);
-                res += $"{result} ◌̶{x}";
-                return result;
+                switch (type)
+                {
+                    case ProcessType.Default:
+                        result = RollDice(faces);
+                        resultString += $"{result}";
+                        break;
+                    case ProcessType.Advantage:
+                        result = RollDiceAdv(faces, out var x);
+                        resultString += $"{result} \u0336{x}";
+                        break;
+                    case ProcessType.Disadvantage:
+                        result = RollDiceDis(faces, out var y);
+                        resultString += $"{result} \u0336{y}";
+                        break;
+                    case ProcessType.DropLowest:
+                    case ProcessType.DropHighest:
+                        throw new ArgumentOutOfRangeException("Cannot Drop from a Single Die!");
+                    case ProcessType.Fudge:
+                        result = RollFudgeDice();
+                        resultString += $"{result}";
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException("Type was outside of bounded enum.");
+                }
             }
             else
             {
-                var result = RollDiceAdv(f, c, out var l1, out var l2);
-                res += $"{result} {l1.ToDiceString(l2)}";
-                return result;
+                switch (type)
+                {
+                    case ProcessType.Default:
+                        result = RollDice(faces, count, out List<int> l1);
+                        resultString += $"{result} {l1.ToDiceString()}";
+                        break;
+                    case ProcessType.Advantage:
+                        result = RollDiceAdv(faces, count, out var m1, out var m2);
+                        resultString += $"{result} {m1.ToDiceString(m2)}";
+                        break;
+                    case ProcessType.Disadvantage:
+                        result = RollDiceDis(faces, count, out var n1, out var n2);
+                        resultString += $"{result} {n1.ToDiceString(n2)}";
+                        break;
+                    case ProcessType.DropLowest:
+                        RollDice(faces, count, out var o1);
+                        result = Drop(drop, o1, out var _, out var o2);
+                        resultString += $"{result} {o2}";
+                        break;
+                    case ProcessType.DropHighest:
+                        RollDice(faces, count, out var p1);
+                        result = Drop(drop, p1, out var _, out var p2, true);
+                        resultString += $"{result} {p2}";
+                        break;
+                    case ProcessType.Fudge:
+                        result = RollFudgeDice(count, out var q1);
+                        resultString = $"{result} {q1.ToDiceString()}";
+                        break;
+                }
             }
-        }
-        private static int ProcessDiceDis(int c, int f, out string res)
-        {
-            if (f == 0)
-                throw new ArgumentOutOfRangeException("Number of Faces on a Die cannot be 0.");
-            res = "";
-            if (c == 1)
-            {
-                var result = RollDiceDis(f, out var x);
-                res += $"{result} ◌̶{x}";
-                return result;
-            }
-            else
-            {
-                var result = RollDiceDis(f, c, out var l1, out var l2);
-                res += $"{result} {l1.ToDiceString(l2)}";
-                return result;
-            }
+            return result;
         }
 
         private static int decompressStack(this Stack<int> digitStack)
@@ -214,42 +272,28 @@ namespace Oestus
             's',
             '+',
             '-',
-            'f'
+            'f',
+            'l',
+            'h'
         };
         private static bool isValidCharacter(char c) => validchars.Contains(c);
-
         public static int RollDice(int faces) => OestusRNG.Next(1, faces + 1);
-
-        public static int RollDiceAdv(int faces, out int alt)
-        {
-            int roll1 = OestusRNG.Next(1, faces);
-            int roll2 = OestusRNG.Next(1, faces);
-            int x = roll1>roll2 ? roll1 : roll2;
-            if (roll1 == x)
-                alt = roll2;
-            else
-                alt = roll1;
-            return x;
-        }
-
-        public static int RollDiceDis(int faces, out int alt)
-        {
-            int roll1 = OestusRNG.Next(1, faces);
-            int roll2 = OestusRNG.Next(1, faces);
-            int x = Math.Min(roll1, roll2);
-            if (roll1 == x)
-                alt = roll2;
-            else
-                alt = roll1;
-            return x;
-        }
-
         public static int RollDice(int faces, int count, out List<int> result)
         {
             result = OestusRNG.Next(1, faces + 1, count);
             return result.Sum();
         }
-
+        public static int RollDiceAdv(int faces, out int alt)
+        {
+            int roll1 = OestusRNG.Next(1, faces);
+            int roll2 = OestusRNG.Next(1, faces);
+            int x = roll1 > roll2 ? roll1 : roll2;
+            if (roll1 == x)
+                alt = roll2;
+            else
+                alt = roll1;
+            return x;
+        }
         public static int RollDiceAdv(int faces, int count, out List<int> l1, out List<int> l2)
         {
             l1 = new List<int>();
@@ -260,6 +304,17 @@ namespace Oestus
                 l2.Add(x);
             }
             return l1.Sum();
+        }
+        public static int RollDiceDis(int faces, out int alt)
+        {
+            int roll1 = OestusRNG.Next(1, faces);
+            int roll2 = OestusRNG.Next(1, faces);
+            int x = Math.Min(roll1, roll2);
+            if (roll1 == x)
+                alt = roll2;
+            else
+                alt = roll1;
+            return x;
         }
         public static int RollDiceDis(int faces, int count, out List<int> l1, out List<int> l2)
         {
@@ -295,6 +350,24 @@ namespace Oestus
             results = facerolls.Select(x => { return x - 2; }).ToList();
             return results.Sum();
         }
+        public static int Drop(int amount, List<int> list, out List<int> results, out string listResults, bool highest = false)
+        {
+            if (amount >= list.Count())
+                throw new ArgumentOutOfRangeException(nameof(amount));
+            list = highest ? list.OrderDescending().Reverse().ToList() : list.OrderDescending().ToList();
+            listResults = "{(";
+            for (int i = 0; i < list.Count(); i++)
+            {
+                if (i > list.Count() - 1 - amount)
+                    listResults += "\u0336";
+                listResults += $"{list[i]}";
+                if (i != list.Count() - 1)
+                    listResults += "), (";
+            }
+            listResults += ")}";
+            results = list.Take(list.Count() - amount).ToList();
+            return results.Sum();
+        }
         public static List<string> TranslateRolls(List<int> rolls, List<string> translations)
         {
             if (rolls.Max() >= translations.Count())
@@ -315,7 +388,6 @@ namespace Oestus
             res += "]}";
             return res;
         }
-
         public static string ToDiceString(this List<int> rolls, List<int> alt)
         {
             string res = "{";
