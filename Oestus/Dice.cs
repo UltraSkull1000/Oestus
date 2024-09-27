@@ -8,6 +8,37 @@ namespace Oestus
             query = query.ToLower(); //for character read consistency
             query.Replace(" ", ""); //remove white spaces
 
+            if (query.Contains("("))
+            {
+                if (query.Where(x => x == '(').Count() != query.Where(x => x == ')').Count())
+                    throw new ArgumentException("Query contains unmatched parenthesis.");
+                List<string> subqueries = new List<string>();
+                for (int i = 0; i < query.Length; i++)
+                {
+                    var subq = false;
+                    string sq = "";
+                    if (query[i] == '(' && subq == false)
+                    {
+                        subq = true;
+                        i++;
+                        while (query[i] != ')')
+                        {
+                            sq += query[i];
+                            i++;
+                        }
+                        subqueries.Add(sq);
+                        sq = "";
+                    }
+                }
+
+                foreach (var sq in subqueries)
+                {
+                    var res = Parse(sq, out var srst);
+                    query = query.Replace($"({sq})", res.ToString());
+                    resultString += $"({srst}) ";
+                }
+            }
+
             if (string.IsNullOrEmpty(query)) //query cannot be empty. 
                 throw new ArgumentNullException($"{nameof(query)} must not be null or empty.");
 
@@ -94,8 +125,8 @@ namespace Oestus
                         if (digitStack.Count() == 0) //oh nevermind, we've double stacked d's
                             throw new ArgumentException("Query format is invalid (too many symbols in a row)");
                         faces = digitStack.decompressStack();
-                        if (next == 'l' || next == 'h')
-                        { //we are dropping the lowest or highest
+                        if (next == 'l' || next == 'h' || next == 'm' || next == 'x')
+                        { //we are dropping the lowest or highest, or processing a minimum.
                             i += 2;
                             int j = i;
                             for (j = i; j < query.Length; j++)
@@ -105,19 +136,35 @@ namespace Oestus
                                 digitStack.Push(query[j] - '0');
                             }
                             i = j;
-                            int drop = digitStack.decompressStack();
+                            int mod = digitStack.decompressStack();
                             if (next == 'l') //dropping lowest
                             {
-                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropLowest, drop);
-                                resultString += $"{count}d{faces}dl{drop} = {dres}";
+                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropLowest, mod);
+                                resultString += $"{count}d{faces}dl{mod} = {dres}";
+                                die = false;
+                                count = 0;
+                                faces = 0;
+                            }
+                            else if (next == 'h')
+                            { //dropping highest
+                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropHighest, mod);
+                                resultString += $"{count}d{faces}dh{mod} = {dres}";
+                                die = false;
+                                count = 0;
+                                faces = 0;
+                            }
+                            else if (next == 'm')
+                            { //setting minimum
+                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.Minimum, mod);
+                                resultString += $"{count}d{faces}dm{mod} = {dres}";
                                 die = false;
                                 count = 0;
                                 faces = 0;
                             }
                             else
-                            { //dropping highest
-                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropHighest, drop);
-                                resultString += $"{count}d{faces}dh{drop} = {dres}";
+                            { //setting maximum
+                                total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.Maximum, mod);
+                                resultString += $"{count}d{faces}dx{mod} = {dres}";
                                 die = false;
                                 count = 0;
                                 faces = 0;
@@ -173,9 +220,11 @@ namespace Oestus
             Disadvantage,
             DropLowest,
             DropHighest,
-            Fudge
+            Fudge,
+            Minimum,
+            Maximum
         }
-        private static int ProcessDice(int faces, int count, out string resultString, ProcessType type = ProcessType.Default, int drop = 0)
+        private static int ProcessDice(int faces, int count, out string resultString, ProcessType type = ProcessType.Default, int mod = 0)
         {
             if (count <= 0) //there are no dice to roll!
                 throw new ArgumentOutOfRangeException("Number of Dice cannot be less than or equal to 0.");
@@ -207,6 +256,26 @@ namespace Oestus
                         result = RollFudgeDice();
                         resultString += $"{result}";
                         break;
+                    case ProcessType.Minimum:
+                        result = RollDice(faces);
+                        if(result < mod){
+                            resultString += $"\u0336{result}";
+                            result = mod;
+                            resultString += $" {mod}";
+                        }
+                        else
+                            resultString += $"{result}";
+                        break;
+                    case ProcessType.Maximum:
+                        result = RollDice(faces);
+                        if(result > mod){
+                            resultString += $"\u0336{result}";
+                            result = mod;
+                            resultString += $" {mod}";
+                        }
+                        else
+                            resultString += $"{result}";
+                        break;
                     default:
                         throw new ArgumentOutOfRangeException("Type was outside of bounded enum.");
                 }
@@ -229,23 +298,32 @@ namespace Oestus
                         break;
                     case ProcessType.DropLowest:
                         RollDice(faces, count, out var o1);
-                        result = Drop(drop, o1, out var _, out var o2);
+                        result = Drop(mod, o1, out var _, out var o2);
                         resultString += $"{result} {o2}";
                         break;
                     case ProcessType.DropHighest:
                         RollDice(faces, count, out var p1);
-                        result = Drop(drop, p1, out var _, out var p2, true);
+                        result = Drop(mod, p1, out var _, out var p2, true);
                         resultString += $"{result} {p2}";
                         break;
                     case ProcessType.Fudge:
                         result = RollFudgeDice(count, out var q1);
                         resultString = $"{result} {q1.ToDiceString()}";
                         break;
+                    case ProcessType.Minimum:
+                        RollDice(faces, count, out var r1);
+                        result = SetMinimum(mod, r1, out var _, out var r2);
+                        resultString += $"{result} {r2}";
+                        break;
+                    case ProcessType.Maximum:
+                        RollDice(faces, count, out var s1);
+                        result = SetMaximum(mod, s1, out var _, out var s2);
+                        resultString += $"{result} {s2}";
+                        break;
                 }
             }
             return result;
         }
-
         private static int decompressStack(this Stack<int> digitStack)
         {
             int count = 0;
@@ -274,7 +352,9 @@ namespace Oestus
             '-',
             'f',
             'l',
-            'h'
+            'h',
+            'm',
+            'x'
         };
         private static bool isValidCharacter(char c) => validchars.Contains(c);
         public static int RollDice(int faces) => OestusRNG.Next(1, faces + 1);
@@ -366,6 +446,35 @@ namespace Oestus
             }
             listResults += ")}";
             results = list.Take(list.Count() - amount).ToList();
+            return results.Sum();
+        }
+
+        public static int SetMinimum(int min, List<int> list, out List<int> results, out string listResults)
+        {
+            results = list.Select(x => { if (x < min) x = min; return x;}).ToList();
+            listResults = "{(";
+            for(int i = 0; i < list.Count(); i++){
+                if(list[i] != results[i])
+                    listResults += $"(\u0336{list[i]} {min})";
+                else listResults+= $"{list[i]}";
+                if(i != list.Count()-1)
+                    listResults += ", ";
+            }
+            listResults += ")}";
+            return results.Sum();
+        }
+        public static int SetMaximum(int max, List<int> list, out List<int> results, out string listResults)
+        {
+            results = list.Select(x => { if (x > max) x = max; return x;}).ToList();
+            listResults = "{(";
+            for(int i = 0; i < list.Count(); i++){
+                if(list[i] != results[i])
+                    listResults += $"(\u0336{list[i]} {max})";
+                else listResults+= $"{list[i]}";
+                if(i != list.Count()-1)
+                    listResults += ", ";
+            }
+            listResults += ")}";
             return results.Sum();
         }
         public static List<string> TranslateRolls(List<int> rolls, List<string> translations)

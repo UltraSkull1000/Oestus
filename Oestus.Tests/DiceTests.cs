@@ -161,12 +161,57 @@ public class DiceTests
         Assert.InRange(x, 3, 18);
     }
 
-        [Fact]
+    [Fact]
     public void Dice_DropHighest()
     {
         Console.SetOut(new ConsoleWriter(output));
         int x = Dice.Parse("4d6dh1", out var y);
         output.WriteLine($"Dice Parser Output: {x} | {y}");
         Assert.InRange(x, 3, 18);
+    }
+
+    [Fact]
+    public void Dice_Parenthesis(){
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("(1d4)d20", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 1, 80);
+    }
+
+    [Fact]
+    public void Dice_Parenthesis2(){
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("(1d4+2)d(12d6)", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 1, 432);
+    }
+
+    [Fact]
+    public void Dice_Minimum(){
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("1d20dm10", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 10, 20);
+    }
+    [Fact]
+    public void Dice_Minimum2(){
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("8d20dm10", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 80, 160);
+    }
+    [Fact]
+    public void Dice_Maximum(){
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("1d20dx10", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 1, 10);
+    }
+    [Fact]
+    public void Dice_Maximum2(){
+        Console.SetOut(new ConsoleWriter(output));
+        int x = Dice.Parse("8d20dx10", out var y);
+        output.WriteLine($"Dice Parser Output: {x} | {y}");
+        Assert.InRange(x, 8, 80);
     }
 }
