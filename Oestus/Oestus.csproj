@@ -1,4 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>OestusRNG</PackageId>
+    <PackageReadmeFile>readme.md</PackageReadmeFile>
+    <PackageLicenseFile>license.txt</PackageLicenseFile>
+    <Version>1.0.6</Version>
+    <Authors>McElroy Ruman</Authors>
+    <Company>Self</Company>
+  </PropertyGroup>
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -8,6 +16,9 @@
 
   <ItemGroup>
     <None Include="Testing"/>
+    <None Include="docs/readme.md" Pack="true" PackagePath=""/>
+    <None Include="licenses/license.txt" Pack="true" PackagePath=""/>
   </ItemGroup>
 
 </Project>
+

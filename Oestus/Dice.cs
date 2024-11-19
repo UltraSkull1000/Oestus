@@ -135,7 +135,7 @@ namespace Oestus
                                     break;
                                 digitStack.Push(query[j] - '0');
                             }
-                            i = j;
+                            i = j-1;
                             int mod = digitStack.decompressStack();
                             if (next == 'l') //dropping lowest
                             {
@@ -259,9 +259,9 @@ namespace Oestus
                     case ProcessType.Minimum:
                         result = RollDice(faces);
                         if(result < mod){
-                            resultString += $"\u0336{result}";
+                            resultString += $"(\u0336{result}";
                             result = mod;
-                            resultString += $" {mod}";
+                            resultString += $" {mod})";
                         }
                         else
                             resultString += $"{result}";
@@ -269,9 +269,9 @@ namespace Oestus
                     case ProcessType.Maximum:
                         result = RollDice(faces);
                         if(result > mod){
-                            resultString += $"\u0336{result}";
+                            resultString += $"(\u0336{result}";
                             result = mod;
-                            resultString += $" {mod}";
+                            resultString += $" {mod})";
                         }
                         else
                             resultString += $"{result}";
