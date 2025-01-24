@@ -50,8 +50,8 @@ namespace Oestus
             for (int i = 0; i < query.Length; i++) //for each character in the query. TODO: Possibly Parallelize by splitting across mathematical symbols.
             {
                 bool EOQ = i >= query.Length - 1; //Whether we are at the end of the query or not
-                char current = query[i];
-                char next = EOQ ? '#' : query[i + 1];
+                char current = query[i]; //Caches the current character, to avoid referencing the array too often.
+                char next = EOQ ? '#' : query[i + 1]; //The next character in the stack, or # if we have reached the end of the query.
 
                 if (!isValidCharacter(current)) //validate whether the current character in the stream is valid in terms of dice. 
                     throw new ArgumentException("Invalid Character in Parsing Stream: " + current);
@@ -63,7 +63,7 @@ namespace Oestus
                         continue;
                 }
 
-                if (!die)
+                if (!die) //if we are NOT processing a die.
                 {
                     if (current == 'd' && !die) //roll over into die mode
                     {
@@ -77,8 +77,11 @@ namespace Oestus
                         continue;
                     }
 
-                    if (current == '+' || current == '-') //we're adding to an integer.
+                    if (current == '+' || current == '-' || EOQ) //we're adding to an integer.
                     {
+                        if (digitStack.Count() == 0) // There is no integer to add, likely End of Query.
+                            continue;
+
                         faces = digitStack.decompressStack(); //get that integer
 
                         if (faces != 0) //the integer isnt 0. otherwise, ignore.
@@ -91,15 +94,6 @@ namespace Oestus
                             multiplier = -1;
                         else //otherwise, reset.
                             multiplier = 1;
-                    }
-
-                    if (EOQ) //we've reached the end of the query in an integer.
-                    {
-                        if (digitStack.Count() == 0)
-                            continue;
-                        faces = digitStack.decompressStack();
-                        total += multiplier * faces;
-                        resultString += faces;
                     }
                 }
                 if (die) //die mode
@@ -119,24 +113,24 @@ namespace Oestus
                         count = 0; //reset dice counter
                     }
 
-
-                    if (current == 'd')
+                    if (current == 'd') // "die mode" though it can be a few different things.
                     {
                         if (digitStack.Count() == 0) //oh nevermind, we've double stacked d's
                             throw new ArgumentException("Query format is invalid (too many symbols in a row)");
                         faces = digitStack.decompressStack();
                         if (next == 'l' || next == 'h' || next == 'm' || next == 'x')
-                        { //we are dropping the lowest or highest, or processing a minimum.
-                            i += 2;
-                            int j = i;
-                            for (j = i; j < query.Length; j++)
+                        { //we are dropping the lowest or highest, or processing a minimum / maximum.
+                            i += 2; //move past the character symbols to the specified varibale
+                            int j = i; 
+                            for (j = i; j < query.Length; j++) 
                             {
                                 if (!char.IsNumber(query[j]))
                                     break;
                                 digitStack.Push(query[j] - '0');
                             }
-                            i = j-1;
-                            int mod = digitStack.decompressStack();
+                            i = j-1; //probably not the most efficient for loop in the world TODO: Fix this
+                            int mod = digitStack.decompressStack(); //Grab the modifier in use.
+                            //TODO: compress the drop and min/max ifs
                             if (next == 'l') //dropping lowest
                             {
                                 total += multiplier * ProcessDice(faces, count, out var dres, ProcessType.DropLowest, mod);
@@ -199,7 +193,7 @@ namespace Oestus
                             total += ProcessDice(faces, count, out dres, ProcessType.Advantage);
                         else //disadvantage
                             total += ProcessDice(faces, count, out dres, ProcessType.Disadvantage);
-                        resultString += $"{count}d{faces}{current} = {dres}";
+                        resultString += $"({count}d{faces}{current} = {dres})";
                         die = false;
                         count = 0;
                     }
